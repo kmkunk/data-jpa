@@ -13,6 +13,7 @@ import study.datajpa.dto.MemberDto;
 import study.datajpa.entity.Member;
 import study.datajpa.entity.Team;
 
+import javax.persistence.EntityManager;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MemberRepositoryTest {
     @Autowired MemberRepository memberRepository;
     @Autowired TeamRepository teamRepository;
+    @Autowired EntityManager em;
 
     @Test
     public void testMember() {
@@ -134,5 +136,54 @@ class MemberRepositoryTest {
 
         //then
         Assertions.assertThat(resultCount).isEqualTo(3);
+    }
+
+    @Test
+    public void queryHint() {
+        //given
+        memberRepository.save(new Member("member1", 10));
+        em.flush();
+        em.clear();
+
+        //when
+        Member member = memberRepository.findReadOnlyByUsername("member1");
+        member.setUsername("member2");
+        em.flush();
+    }
+
+    @Test
+    public void customTest() {
+        //given
+        memberRepository.save(new Member("member1", 30));
+        memberRepository.save(new Member("member2", 20));
+
+        //when
+        List<Member> result = memberRepository.findMemberCustom();
+
+        //then
+        Assertions.assertThat(result.size()).isEqualTo(2);
+
+    }
+
+    @Test
+    public void eventBaseEntity() throws Exception {
+        //given
+        Member member = new Member("member1");
+        memberRepository.save(member); //@PrePersist
+
+        Thread.sleep(1000);
+        member.setUsername("member2");
+
+        em.flush(); //@PreUpdate
+        em.clear();
+
+        //when
+        Member findMember = memberRepository.findById(member.getId()).get();
+
+        //then
+        System.out.println("findMember.getCreatedDate() = " + findMember.getCreatedDate());
+        System.out.println("findMember.getLastModifiedDate() = " + findMember.getLastModifiedDate());
+        System.out.println("findMember.getCreatedBy() = " + findMember.getCreatedBy());
+        System.out.println("findMember.getLastModifiedBy() = " + findMember.getLastModifiedBy());
     }
 }
